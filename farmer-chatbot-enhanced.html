@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer AI Chatbot - Enhanced Offline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            height: 80vh;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .chat-header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .chat-header p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .bot-message {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        #messageInput:focus {
+            border-color: #4CAF50;
+        }
+        
+        #sendButton {
+            padding: 12px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+            min-width: 60px;
+        }
+        
+        #sendButton:hover {
+            background: #45a049;
+        }
+        
+        #sendButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        
+        .offline-indicator {
+            background: #ff9800;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 0.9em;
+            display: none;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-action {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .quick-action:hover {
+            background: #bbdefb;
+            transform: translateY(-1px);
+        }
+        
+        @media (max-width: 600px) {
+            .chat-container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🌾 Farmer AI Assistant</h1>
+            <p>Your complete farming guide - Works Offline!</p>
+        </div>
+        
+        <div class="offline-indicator" id="offlineIndicator">
+            🌱 Offline Mode - Using local farming knowledge
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                👋 Hello! I'm your comprehensive farming assistant. I can help you with crops, soil, weather, pests, organic farming, irrigation, and much more! Try asking me anything about farming. I work completely offline!
+            </div>
+            <div class="quick-actions">
+                <div class="quick-action" onclick="askQuestion('What crops grow best in sandy soil?')">🏖️ Sandy Soil</div>
+                <div class="quick-action" onclick="askQuestion('How to start organic farming?')">🌿 Organic Farming</div>
+                <div class="quick-action" onclick="askQuestion('Best fertilizer for tomatoes?')">🍅 Tomato Care</div>
+                <div class="quick-action" onclick="askQuestion('Pest control for vegetables?')">🐛 Pest Control</div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+        
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Ask any farming question..." />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Comprehensive farming knowledge base
+        const farmingKnowledge = {
+            // SOIL TYPES - DETAILED
+            'sandy soil': {
+                response: "🏖️ **Sandy Soil Guide:**\n\n**Best Crops:**\n• Root vegetables: Carrots, radishes, potatoes, sweet potatoes\n• Melons: Watermelons, cantaloupes\n• Vegetables: Lettuce, corn, asparagus\n• Herbs: Rosemary, thyme, oregano\n\n**Soil Improvement:**\n• Add 4-6 inches of compost annually\n• Use cover crops like clover or rye\n• Mulch heavily to retain moisture\n• Avoid over-fertilizing - nutrients leach quickly\n\n**Water Management:**\n• Water deeply but infrequently\n• Use drip irrigation for efficiency\n• Water early morning to reduce evaporation",
+                keywords: ['sandy', 'sand', 'drains quickly', 'well-draining']
+            },
+            
+            'clay soil': {
+                response: "🟫 **Clay Soil Guide:**\n\n**Best Crops:**\n• Leafy greens: Broccoli, cabbage, Brussels sprouts, kale\n• Root crops: Beets, turnips (short varieties)\n• Legumes: Beans, peas\n• Fruits: Apples, pears, berries\n\n**Soil Improvement:**\n• Add gypsum to break up clay particles\n• Mix in 2-3 inches of compost yearly\n• Use raised beds for better drainage\n• Avoid working when wet - causes compaction\n\n**Planting Tips:**\n• Plant seeds shallower than recommended\n• Space plants further apart for air circulation\n• Consider container gardening for better control",
+                keywords: ['clay', 'heavy', 'compacted', 'waterlogged', 'poor drainage']
+            },
+            
+            'silty soil': {
+                response: "🟨 **Silty Soil Guide:**\n\n**Best Crops:**\n• Grains: Wheat, rice, barley, oats\n• Vegetables: Tomatoes, lettuce, cabbage, cucumbers\n• Root crops: Carrots, potatoes, onions\n• Fruits: Most fruit trees thrive\n\n**Advantages:**\n• Excellent moisture retention\n• Naturally fertile\n• Good drainage without drying out\n• Easy to work with\n\n**Management:**\n• Add organic matter yearly\n• Use mulch to prevent erosion\n• Avoid over-tilling - can become compacted\n• Perfect for both conventional and organic farming",
+                keywords: ['silty', 'silt', 'fertile', 'moisture retention']
+            },
+            
+            // CROP SPECIFIC - COMPREHENSIVE
+            'wheat': {
+                response: "🌾 **Complete Wheat Growing Guide:**\n\n**Planting:**\n• Time: Fall (Sept-Oct) for winter wheat, Spring (Mar-Apr) for spring wheat\n• Depth: 1-2 inches deep\n• Spacing: 6-8 inches between rows\n• Soil temp: 45-65°F for germination\n\n**Water Requirements:**\n• Total: 20-25 inches per season\n• Critical stages: Booting, flowering, grain fill\n• Method: Drip or flood irrigation\n\n**Fertilizer:**\n• Nitrogen: 60-90 lbs/acre (split application)\n• Phosphorus: Based on soil test\n• Potassium: 40-60 lbs/acre\n• Timing: Half at planting, half at tillering\n\n**Harvest:**\n• Timing: When kernels are hard and golden\n• Moisture: 13-14% for storage\n• Yield: 40-80 bushels/acre depending on variety\n\n**Common Problems:**\n• Rust: Use resistant varieties, fungicide if needed\n• Aphids: Monitor in spring, beneficial insects help\n• Wheat streak mosaic: Control wheat curl mites",
+                keywords: ['wheat', 'grain', 'cereal']
+            },
+            
+            'rice': {
+                response: "🌾 **Complete Rice Growing Guide:**\n\n**Planting Methods:**\n• Traditional: Direct seeding in flooded fields\n• SRI (System of Rice Intensification): Transplanting seedlings\n• Seed rate: 80-100 kg/ha for direct seeding\n\n**Water Management:**\n• Maintain 2-4 inches standing water\n• Drain before harvest (2 weeks prior)\n• Critical stages: Tillering, flowering\n• Total water: 1000-2000 mm per season\n\n**Fertilizer:**\n• Nitrogen: 100-150 kg/ha (3 split applications)\n• Phosphorus: 40-60 kg/ha at planting\n• Potassium: 30-50 kg/ha\n• Zinc: Important for rice - 25 kg/ha if deficient\n\n**Spacing (SRI Method):**\n• Traditional: 20x20 cm\n• SRI: 25x25 cm with single seedling\n• Benefits: 30-50% higher yields, less water\n\n**Harvest:**\n• Timing: 80-120 days after planting\n• Indicators: 80% grains golden, moisture 20-22%\n• Yield: 4-6 tons/ha traditional, 6-8 tons/ha SRI",
+                keywords: ['rice', 'paddy', 'water management']
+            },
+            
+            'corn': {
+                response: "🌽 **Complete Corn Growing Guide:**\n\n**Planting:**\n• Time: Spring when soil reaches 60°F\n• Depth: 1.5-2 inches deep\n• Spacing: 30 inches between rows, 6-12 inches between plants\n• Population: 25,000-35,000 plants/acre\n\n**Water Needs:**\n• Total: 20-30 inches per season\n• Critical: Tasseling and silking stages\n• Method: Drip irrigation most efficient\n• Frequency: 1-1.5 inches per week\n\n**Fertilizer:**\n• Nitrogen: 150-200 lbs/acre\n• Phosphorus: 50-80 lbs/acre at planting\n• Potassium: 100-150 lbs/acre\n• Timing: Side-dress nitrogen when plants are knee-high\n\n**Pest Management:**\n• Corn borer: Use Bt corn or monitor with traps\n• Earworm: Apply beneficial insects\n• Cutworm: Use collars on seedlings\n• Weeds: Pre-emergent herbicides or cultivation\n\n**Harvest:**\n• Timing: When husks are dry and kernels are dented\n• Moisture: 15.5% for storage\n• Yield: 150-200 bushels/acre (irrigated)",
+                keywords: ['corn', 'maize', 'sweet corn']
+            },
+            
+            'tomato': {
+                response: "🍅 **Complete Tomato Growing Guide:**\n\n**Planting:**\n• Time: After last frost, soil 70°F+\n• Spacing: 24-36 inches apart, 36-48 inches between rows\n• Depth: Plant deep, up to first leaves\n• Support: Cages, stakes, or trellises\n\n**Water Requirements:**\n• Amount: 1-2 inches per week\n• Method: Drip irrigation at base\n• Frequency: Deep watering, avoid wetting leaves\n• Mulch: 2-3 inches to conserve moisture\n\n**Fertilizer:**\n• NPK ratio: Balanced 10-10-10 or 5-10-10\n• Timing: At planting, flowering, and fruit set\n• Amount: 2-3 lbs per 100 sq ft per season\n• Organic: Compost, fish emulsion, bone meal\n\n**Common Problems:**\n• Blossom end rot: Calcium deficiency, consistent watering\n• Hornworms: Hand-pick or use Bt\n• Early blight: Remove affected leaves, copper spray\n• Aphids: Insecticidal soap, beneficial insects\n\n**Harvest:**\n• Timing: Fully colored but still firm\n• Storage: Room temperature, not in refrigerator\n• Yield: 10-20 lbs per plant depending on variety",
+                keywords: ['tomato', 'tomatoes']
+            },
+            
+            // ORGANIC FARMING
+            'organic farming': {
+                response: "🌿 **Complete Organic Farming Guide:**\n\n**Basic Principles:**\n• No synthetic pesticides or fertilizers\n• Focus on soil health and biodiversity\n• Crop rotation and diversity\n• Natural pest management\n\n**Soil Management:**\n• Compost: 2-3 inches annually\n• Cover crops: Clover, vetch, rye in off-season\n• Green manures: Turn under before flowering\n• Minimum tillage: Preserve soil structure\n\n**Pest Control:**\n• Prevention: Crop rotation, resistant varieties\n• Biological: Ladybugs, lacewings, beneficial nematodes\n• Physical: Row covers, traps, hand-picking\n• Botanical: Neem oil, pyrethrin, insecticidal soap\n\n**Weed Management:**\n• Prevention: Mulch, cover crops, proper spacing\n• Mechanical: Hoeing, cultivation, flame weeding\n• Cultural: Crop rotation, competitive planting\n\n**Certification Process:**\n• Transition period: 3 years\n• Record keeping: Detailed farming practices\n• Inspection: Annual certification review\n• Benefits: Premium prices, environmental stewardship\n\n**Getting Started:**\n1. Test soil and improve with organic matter\n2. Plan crop rotation schedule\n3. Source organic seeds and inputs\n4. Develop pest monitoring system\n5. Keep detailed records from day 1",
+                keywords: ['organic', 'natural farming', 'chemical-free']
+            },
+            
+            // IRRIGATION
+            'irrigation': {
+                response: "💧 **Complete Irrigation Guide:**\n\n**Drip Irrigation (Most Efficient):**\n• Efficiency: 90-95%\n• Best for: Row crops, vegetables, orchards\n• Benefits: Less weeds, disease prevention\n• Cost: $500-1500 per acre initial setup\n\n**Sprinkler Irrigation:**\n• Efficiency: 70-80%\n• Best for: Pastures, lawns, field crops\n• Types: Center pivot, traveling gun, solid set\n• Pressure: 40-60 PSI typical\n\n**Flood Irrigation:**\n• Efficiency: 40-50%\n• Best for: Rice, level fields\n• Method: Border, basin, furrow irrigation\n• Labor: High maintenance requirement\n\n**Scheduling Guidelines:**\n• Vegetables: 1-1.5 inches per week\n• Field crops: 1-2 inches per week\n• Orchards: 2-3 inches per week\n• Timing: Early morning or late evening\n\n**Water Quality:**\n• pH: 6.5-8.0 ideal\n• EC: Less than 3 dS/m for most crops\n• Filtration: Remove particles > 50 microns\n• Testing: Annually for contaminants\n\n**Conservation Tips:**\n• Use soil moisture sensors\n• Implement deficit irrigation strategies\n• Capture and reuse runoff water\n• Maintain irrigation equipment regularly",
+                keywords: ['irrigation', 'watering', 'water management']
+            },
+            
+            // PEST MANAGEMENT
+            'pest control': {
+                response: "🐛 **Integrated Pest Management (IPM) Guide:**\n\n**1. Prevention (First Line):**\n• Crop rotation: Break pest cycles\n• Resistant varieties: Choose adapted cultivars\n• Proper spacing: Good air circulation\n• Sanitation: Remove crop debris\n\n**2. Monitoring:**\n• Scouting: Weekly field inspections\n• Traps: Pheromone, sticky, light traps\n• Thresholds: Economic injury levels\n• Records: Track pest patterns yearly\n\n**3. Biological Controls:**\n• Ladybugs: Aphids, mealybugs, scale insects\n• Lacewings: Aphids, whiteflies, thrips\n• Praying mantis: Most garden pests\n• Beneficial nematodes: Soil-dwelling pests\n\n**4. Mechanical Controls:**\n• Hand-picking: Large insects like hornworms\n• Traps: Color, pheromone, light traps\n• Barriers: Row covers, netting\n• Tillage: Expose soil pests to predators\n\n**5. Chemical Controls (Last Resort):**\n• Organic options: Neem oil, Bt, pyrethrin\n• Synthetic: Use least toxic options\n• Timing: Apply when pests are most vulnerable\n• Resistance: Rotate chemical classes\n\n**Common Pests by Crop:**\n• Tomatoes: Hornworms, aphids, whiteflies\n• Corn: Corn borers, earworms, cutworms\n• Cabbage: Cabbage worms, aphids, flea beetles\n• Squash: Squash bugs, vine borers, cucumber beetles",
+                keywords: ['pest', 'insect', 'bug', 'aphid', 'hornworm']
+            },
+            
+            // FERTILIZER
+            'fertilizer': {
+                response: "🌱 **Complete Fertilizer Guide:**\n\n**Understanding NPK:**\n• Nitrogen (N): Leaf growth, green color\n• Phosphorus (P): Root development, flowering\n• Potassium (K): Fruit quality, disease resistance\n\n**Application Timing:**\n• Pre-plant: Based on soil test recommendations\n• At planting: Starter fertilizer for seedlings\n• Growing season: Split applications for efficiency\n• Post-harvest: Cover crops for next season\n\n**Crop-Specific Needs:**\n• Corn: High nitrogen (150-200 lbs/acre)\n• Wheat: Moderate nitrogen (60-90 lbs/acre)\n• Tomatoes: Balanced NPK (10-10-10)\n• Leafy greens: High nitrogen for growth\n\n**Organic Options:**\n• Compost: 2-3 inches annually\n• Manure: Well-aged, 20-40 lbs per 1000 sq ft\n• Bone meal: Phosphorus source\n• Blood meal: High nitrogen content\n• Green sand: Potassium and micronutrients\n\n**Application Methods:**\n• Broadcast: Even coverage before planting\n• Band: Concentrated near seed row\n• Side-dress: During growing season\n• Fertigation: Through irrigation system\n\n**Safety Precautions:**\n• Soil test: Every 2-3 years\n• pH management: 6.0-7.0 optimal\n• Water quality: Prevent nutrient lock-up\n• Environmental: Prevent runoff to waterways",
+                keywords: ['fertilizer', 'nutrients', 'npk', 'feeding']
+            },
+            
+            // WEATHER
+            'weather': {
+                response: "🌤️ **Weather-Smart Farming Guide:**\n\n**Frost Protection:**\n• Cover crops: Blankets, row covers, hot caps\n• Water: Sprinkle plants before sunrise (releases heat)\n• Wind machines: Mix warm air with cold air\n• Site selection: Avoid low-lying areas\n\n**Drought Management:**\n• Crops: Sorghum, millets, cowpeas, tepary beans\n• Practices: Conservation tillage, mulching\n• Irrigation: Drip systems, timing adjustments\n• Soil: Organic matter to hold moisture\n\n**Heat Stress:**\n• Timing: Earlier/later planting dates\n• Shade: Shade nets for sensitive crops\n• Water: Deep, infrequent irrigation\n• Varieties: Heat-tolerant cultivars\n\n**Rain Management:**\n• Drainage: Raised beds, contour farming\n• Cover crops: Prevent erosion\n• Timing: Avoid field work when wet\n• Structures: Grassed waterways, terraces\n\n**Seasonal Planning:**\n• Spring: Watch soil temperature, frost dates\n• Summer: Heat protection, irrigation scheduling\n• Fall: Harvest timing, winter preparation\n• Winter: Cover crops, equipment maintenance\n\n**Climate Adaptation:**\n• Diversify: Multiple crop varieties\n• Flexible: Adjustable planting schedules\n• Resilient: Soil health focus\n• Informed: Weather monitoring services",
+                keywords: ['weather', 'climate', 'frost', 'drought', 'rain']
+            },
+            
+            // CROP ROTATION
+            'crop rotation': {
+                response: "🔄 **Complete Crop Rotation Guide:**\n\n**Benefits:**\n• Pest control: Breaks insect and disease cycles\n• Soil health: Different root depths and nutrients\n• Weed management: Different life cycles\n• Yield increase: Up to 20% higher yields\n\n**4-Year Rotation Example:**\n• Year 1: Corn (heavy feeder)\n• Year 2: Soybeans (nitrogen fixer)\n• Year 3: Wheat (moderate feeder)\n• Year 4: Alfalfa (soil builder)\n\n**Vegetable Garden Rotation:**\n• Legumes → Brassicas → Alliums → Solanaceae\n• Beans → Cabbage → Onions → Tomatoes\n• Peas → Broccoli → Garlic → Peppers\n\n**Rotation Principles:**\n• Follow heavy feeders with light feeders\n• Include nitrogen-fixing legumes\n• Use deep-rooted then shallow-rooted crops\n• Avoid same family crops consecutively\n\n**Family Groups:**\n• Solanaceae: Tomatoes, peppers, potatoes, eggplant\n• Brassicaceae: Cabbage, broccoli, cauliflower, kale\n• Leguminosae: Beans, peas, lentils, alfalfa\n• Alliaceae: Onions, garlic, leeks\n• Cucurbitaceae: Squash, cucumbers, melons\n\n**Advanced Techniques:**\n• Cover crops: Between cash crops\n• Double cropping: Two crops per season\n• Strip cropping: Alternating strips\n• Relay planting: Overlapping seasons",
+                keywords: ['rotation', 'rotate crops', 'crop sequence']
+            },
+            
+            // COMPANION PLANTING
+            'companion planting': {
+                response: "🌿 **Complete Companion Planting Guide:**\n\n**Classic Combinations:**\n\n**Three Sisters (Native American):**\n• Corn: Provides support for beans\n• Beans: Fix nitrogen for corn and squash\n• Squash: Shades soil, deters pests\n\n**Tomato Companions:**\n• Basil: Repels hornworms and aphids\n• Marigolds: Deter nematodes\n• Carrots: Good neighbors, different root depths\n• Borage: Attracts beneficial insects\n\n**Cabbage Family Companions:**\n• Dill: Attracts beneficial insects\n• Mint: Deters cabbage moths\n• Rosemary: Repels cabbage butterflies\n• Onions: Deter carrot rust flies\n\n**Bad Combinations (Avoid):**\n• Tomatoes + Potatoes: Both susceptible to blight\n• Beans + Onions: Onions inhibit bean growth\n• Cabbage + Grapes: Grapes stunt cabbage growth\n• Sunflowers + Potatoes: Sunflowers are allelopathic\n\n**Benefits of Companion Planting:**\n• Pest control: Natural repellent properties\n• Nutrient sharing: Different nutrient needs\n• Space efficiency: Vertical growing\n• Biodiversity: Attracts beneficial insects\n\n**Planning Tips:**\n• Consider plant heights and sun needs\n• Research specific variety interactions\n• Observe and adjust based on results\n• Keep records of successful combinations",
+                keywords: ['companion', 'plant together', 'good neighbors']
+            }
+        };
+
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const loading = document.getElementById('loading');
+        const offlineIndicator = document.getElementById('offlineIndicator');
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function askQuestion(question) {
+            messageInput.value = question;
+            sendMessage();
+        }
+
+        function getSmartResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Check for exact matches first
+            for (const [key, data] of Object.entries(farmingKnowledge)) {
+                if (lowerMessage.includes(key)) {
+                    return data.response;
+                }
+            }
+            
+            // Check for keyword matches
+            for (const [key, data] of Object.entries(farmingKnowledge)) {
+                if (data.keywords && data.keywords.some(keyword => lowerMessage.includes(keyword))) {
+                    return data.response;
+                }
+            }
+            
+            // Check for general farming keywords
+            const farmingKeywords = [
+                'crop', 'soil', 'farm', 'agriculture', 'irrigation', 'fertilizer', 
+                'pesticide', 'harvest', 'planting', 'seeds', 'weather', 'rainfall',
+                'drought', 'pest', 'disease', 'yield', 'cultivation', 'farming',
+                'tractor', 'plow', 'organic', 'greenhouse', 'livestock', 'cattle',
+                'milk', 'poultry', 'fish', 'rice', 'wheat', 'corn', 'vegetables',
+                'fruits', 'sugarcane', 'cotton', 'tea', 'coffee', 'spices', 'water',
+                'grow', 'plant', 'seed', 'garden', 'field'
+            ];
+            
+            const isFarmingRelated = farmingKeywords.some(keyword => lowerMessage.includes(keyword));
+            
+            if (!isFarmingRelated) {
+                return "🚫 I specialize in farming and agriculture topics only. Please ask me about crops, soil, weather, farming techniques, organic farming, pest control, irrigation, or other agricultural subjects. I'm here to help with all your farming questions!";
+            }
+            
+            // Enhanced default response with suggestions
+            return "🌱 **Great farming question!** Here are some topics I can help you with in detail:\n\n**📊 Soil Types:**\n• Sandy soil crops and management\n• Clay soil improvement techniques\n• Silty soil advantages and crops\n\n**🌾 Crop Guides:**\n• Wheat, rice, corn complete growing instructions\n• Tomato, vegetable care\n• Planting, harvesting, yields\n\n**🌿 Farming Practices:**\n• Organic farming complete guide\n• Crop rotation planning\n• Companion planting combinations\n\n**💧 Management:**\n• Irrigation systems and scheduling\n• Pest control (IPM)\n• Fertilizer application\n• Weather protection\n\n**Try asking about any of these topics, or be more specific about your farming situation!**";
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            messageInput.value = '';
+            loading.style.display = 'block';
+            sendButton.disabled = true;
+
+            try {
+                // Simulate thinking time for better UX
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                const reply = getSmartResponse(message);
+                addMessage(reply);
+                
+                // Show offline indicator briefly
+                offlineIndicator.style.display = 'block';
+                setTimeout(() => {
+                    offlineIndicator.style.display = 'none';
+                }, 2000);
+                
+            } catch (error) {
+                addMessage('❌ Sorry, I encountered an error. Please try again.');
+            } finally {
+                loading.style.display = 'none';
+                sendButton.disabled = false;
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Check online status
+        window.addEventListener('online', () => {
+            offlineIndicator.style.display = 'none';
+        });
+
+        window.addEventListener('offline', () => {
+            offlineIndicator.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
