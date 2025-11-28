@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer AI Chatbot - Standalone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .chat-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            height: 80vh;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .chat-header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .chat-header p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .bot-message {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        #messageInput:focus {
+            border-color: #4CAF50;
+        }
+        
+        #sendButton {
+            padding: 12px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+            min-width: 60px;
+        }
+        
+        #sendButton:hover {
+            background: #45a049;
+        }
+        
+        #sendButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        
+        .offline-indicator {
+            background: #ff9800;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 0.9em;
+            display: none;
+        }
+        
+        @media (max-width: 600px) {
+            .chat-container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🌾 Farmer AI Assistant</h1>
+            <p>Your farming and agriculture expert</p>
+        </div>
+        
+        <div class="offline-indicator" id="offlineIndicator">
+            ⚠️ Offline Mode - Using local responses only
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                👋 Hello! I'm your farming assistant. I can help you with questions about crops, soil, weather, farming techniques, and other agricultural topics. How can I help you today?
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+        
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Ask your farming question here..." />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Comprehensive farming knowledge base
+        const farmingKnowledge = {
+            // Soil type combinations
+            'silty soil': "Silty soil is excellent for farming! It retains moisture well and has good fertility. Best crop combinations for silty soil: 1) Wheat + Soybean rotation, 2) Corn + Alfalfa, 3) Vegetables like tomatoes, lettuce, and cabbage, 4) Rice in flooded conditions. Silty soil is particularly good for root crops like carrots and potatoes due to its good drainage and fertility.",
+            
+            'clay soil': "Clay soil holds nutrients well but drains slowly. Best crops: 1) Broccoli, cabbage, and Brussels sprouts, 2) Lettuce and spinach, 3) Beans and peas, 4) Fruit trees like apple and pear. Consider adding organic matter to improve drainage. Avoid root vegetables that may rot in heavy soil.",
+            
+            'sandy soil': "Sandy soil drains quickly and warms up fast. Best crops: 1) Root vegetables like carrots, radishes, and potatoes, 2) Watermelons and cucumbers, 3) Lettuce and corn, 4) Herbs like thyme and rosemary. Add plenty of organic matter and use mulch to retain moisture.",
+            
+            // Crop rotation and combinations
+            'crop rotation': "Crop rotation is essential for soil health! Good rotation plans: 1) Year 1: Corn, Year 2: Soybeans, Year 3: Wheat, Year 4: Alfalfa, 2) Year 1: Tomatoes, Year 2: Beans, Year 3: Carrots, Year 4: Lettuce. Benefits include pest control, disease prevention, and improved soil fertility. Avoid planting crops from the same family consecutively.",
+            
+            'companion planting': "Companion planting improves growth and pest control! Great combinations: 1) Tomatoes + Basil (repels hornworms), 2) Corn + Beans + Squash (Three Sisters), 3) Carrots + Onions + Lettuce, 4) Cabbage + Dill (attracts beneficial insects), 5) Roses + Garlic (deters pests). Avoid: potatoes with tomatoes, beans with onions, cabbage with grapes.",
+            
+            // Specific crops
+            'wheat': "Growing wheat successfully: 1) Planting: 1-2 inches deep, 6-8 inches apart, in cool soil (45-65°F), 2) Water: 20-25 inches total, critical during booting and grain fill, 3) Fertilizer: 60-90 lbs nitrogen per acre, split application, 4) Harvest: When kernels are hard and golden, moisture 13-14%, 5) Yield: 40-80 bushels per acre depending on variety and management. Watch for rust, aphids, and wheat streak mosaic.",
+            
+            'rice': "Growing rice: 1) Planting: Seed in nursery, transplant 20-30 days old, 2) Water management: Maintain 2-4 inches standing water, drain before harvest, 3) Fertilizer: 100-150 lbs nitrogen per acre in 3 splits, 4) Spacing: 6x6 inches for traditional, 15x15 cm for SRI method, 5) Harvest: 80-120 days after planting, when 80% grains are golden. Consider System of Rice Intensification (SRI) for higher yields with less water.",
+            
+            'corn': "Growing corn successfully: 1) Planting: When soil reaches 60°F, 1.5-2 inches deep, 8-12 inches apart, 2) Water: 1-1.5 inches per week, critical during tasseling and silking, 3) Fertilizer: 150-200 lbs nitrogen per acre, side-dress when knee-high, 4) Spacing: 30 inches between rows, 6-12 inches between plants, 5) Harvest: When husks are dry and kernels are dented. Watch for corn borers, earworms, and nutrient deficiencies.",
+            
+            'tomato': "Tomatoes need 1-2 inches of water weekly. Plant in full sun with well-draining soil. Use balanced fertilizer with equal NPK ratio. Support with cages or stakes. Watch for hornworms, blight, and blossom end rot. Harvest when fully colored but still firm.",
+            
+            // Irrigation
+            'irrigation': "Irrigation methods comparison: 1) Drip irrigation: 90-95% efficient, best for row crops, reduces weeds, 2) Sprinkler: 70-80% efficient, good for lawns and pastures, 3) Flood irrigation: 40-50% efficient, traditional but wasteful, 4) Subsurface drip: 95% efficient, minimal evaporation. For small farms, drip irrigation with timers is most cost-effective and water-efficient.",
+            
+            // Organic farming
+            'organic farming': "Organic farming focuses on soil health and natural inputs: Key practices: 1) Use compost, manure, and green manures for fertility, 2) Practice crop rotation and companion planting, 3) Use biological pest control (beneficial insects), 4) Avoid synthetic pesticides and fertilizers, 5) Maintain buffer zones from conventional farms. Certification takes 3 years and requires detailed record-keeping.",
+            
+            // Pest management
+            'pest': "Integrated Pest Management (IPM) approach: 1) Prevention: Crop rotation, resistant varieties, proper spacing, 2) Monitoring: Regular scouting, pest identification, 3) Biological controls: Ladybugs, praying mantis, beneficial nematodes, 4) Mechanical controls: Traps, hand-picking, barriers, 5) Chemical controls: Only as last resort, use least toxic options. Keep records to track pest patterns year to year.",
+            
+            // Fertilizer
+            'fertilizer': "Fertilizer timing and amounts: 1) Nitrogen: Apply in split doses - half at planting, half during peak growth, 2) Phosphorus: Apply at planting based on soil test, 3) Potassium: Apply in fall or spring, 4) Micronutrients: Based on deficiency symptoms. General rule: 1-2 lbs of nitrogen per 1000 sq ft for vegetables, 100-150 lbs per acre for field crops. Always follow soil test recommendations!",
+            
+            // Soil health
+            'soil health': "Improving soil health is crucial! Key practices: 1) Add organic matter: Compost, manure, cover crops, 2) Reduce tillage: No-till or minimum tillage preserves soil structure, 3) Keep soil covered: Mulch, cover crops prevent erosion, 4) Rotate crops: Different root depths and nutrient needs, 5) Test soil regularly: Every 2-3 years for pH and nutrients. Healthy soil should be dark, crumbly, and full of earthworms.",
+            
+            // Weather
+            'weather': "Climate-smart farming practices: 1) Drought-resistant crops: Sorghum, millets, cowpeas, 2) Water conservation: Drip irrigation, rainwater harvesting, 3) Heat management: Shade nets, mulching, adjusted planting times, 4) Flood management: Raised beds, drainage systems, 5) Season extension: Greenhouses, row covers. Monitor weather forecasts and maintain flexible planting schedules."
+        };
+
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const loading = document.getElementById('loading');
+        const offlineIndicator = document.getElementById('offlineIndicator');
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function getLocalResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Check for specific knowledge base entries
+            for (const [key, response] of Object.entries(farmingKnowledge)) {
+                if (lowerMessage.includes(key)) {
+                    return response;
+                }
+            }
+            
+            // Check for general farming keywords
+            const farmingKeywords = [
+                'crop', 'soil', 'farm', 'agriculture', 'irrigation', 'fertilizer', 
+                'pesticide', 'harvest', 'planting', 'seeds', 'weather', 'rainfall',
+                'drought', 'pest', 'disease', 'yield', 'cultivation', 'farming',
+                'tractor', 'plow', 'organic', 'greenhouse', 'livestock', 'cattle',
+                'milk', 'poultry', 'fish', 'rice', 'wheat', 'corn', 'vegetables',
+                'fruits', 'sugarcane', 'cotton', 'tea', 'coffee', 'spices', 'water'
+            ];
+            
+            const isFarmingRelated = farmingKeywords.some(keyword => lowerMessage.includes(keyword));
+            
+            if (!isFarmingRelated) {
+                return "I can only help with farming and agriculture-related questions. Please ask me about crops, soil, weather, farming techniques, or other agricultural topics.";
+            }
+            
+            return "That's an excellent farming question! For the most accurate advice for your specific situation, I'd recommend: 1) Contacting your local agricultural extension office, 2) Getting a soil test to understand your specific soil conditions, 3) Considering your local climate and rainfall patterns, 4) Consulting with experienced farmers in your region. They can provide guidance tailored to your soil type, climate, and specific farming conditions. Would you like me to help with a more specific aspect of farming?";
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, true);
+            messageInput.value = '';
+            loading.style.display = 'block';
+            sendButton.disabled = true;
+
+            try {
+                // Try to use external API first, fallback to local responses
+                let reply;
+                
+                // Check if we can reach an external service
+                try {
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer your-api-key-here'
+                        },
+                        body: JSON.stringify({
+                            model: "gpt-3.5-turbo",
+                            messages: [
+                                {
+                                    role: "system",
+                                    content: "You are a helpful AI assistant specialized in farming and agriculture."
+                                },
+                                {
+                                    role: "user",
+                                    content: message
+                                }
+                            ],
+                            max_tokens: 300
+                        }),
+                        timeout: 5000
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        reply = data.choices[0].message.content;
+                    } else {
+                        throw new Error('API not available');
+                    }
+                } catch (error) {
+                    // Fallback to local responses
+                    reply = getLocalResponse(message);
+                    offlineIndicator.style.display = 'block';
+                    setTimeout(() => {
+                        offlineIndicator.style.display = 'none';
+                    }, 3000);
+                }
+                
+                addMessage(reply);
+            } catch (error) {
+                addMessage('Sorry, I encountered an error. Please try again.');
+            } finally {
+                loading.style.display = 'none';
+                sendButton.disabled = false;
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Check online status
+        window.addEventListener('online', () => {
+            offlineIndicator.style.display = 'none';
+        });
+
+        window.addEventListener('offline', () => {
+            offlineIndicator.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
